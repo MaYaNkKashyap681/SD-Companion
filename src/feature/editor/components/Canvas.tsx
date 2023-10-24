@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import Draggable from "react-draggable";
 import { ComponentsInterface, data } from "../constants";
 
 const ComponentCard: React.FC<ComponentsInterface> = ({ img, name }) => {
@@ -13,7 +14,7 @@ const ComponentCard: React.FC<ComponentsInterface> = ({ img, name }) => {
             onDragStart={handleDragStart}
         >
             <img src={img} className="w-full h-full" alt={name} />
-            <p className="absolute top-0 left-0 bg-white w-fit shadow-md rounded-mt">
+            <p className="absolute top-1 left-1 bg-white w-fit shadow-md rounded-mt text-sm font-semibold p-2 rounded-xl">
                 {name}
             </p>
         </div>
@@ -23,6 +24,7 @@ const ComponentCard: React.FC<ComponentsInterface> = ({ img, name }) => {
 const Canvas: React.FC = () => {
     const [scale, setScale] = useState<number>(1);
     const [elements, setElements] = useState<any[]>([]);
+    const canvasRef = useRef<HTMLDivElement | null>(null);
 
     const createNewElement = (img: string, name: string, x: number, y: number) => {
         const newElement = {
@@ -34,6 +36,16 @@ const Canvas: React.FC = () => {
         setElements([...elements, newElement]);
     };
 
+    const updateElementPosition = (index: number, x: number, y: number) => {
+        const updatedElements = [...elements];
+        updatedElements[index] = {
+            ...updatedElements[index],
+            x,
+            y,
+        };
+        setElements(updatedElements);
+    };
+
     const handleCanvasDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         const data = e.dataTransfer.getData("text/plain");
@@ -41,7 +53,14 @@ const Canvas: React.FC = () => {
         if (data) {
             const { img, name } = JSON.parse(data);
 
-            createNewElement(img, name, e.clientX, e.clientY);
+            const canvas = canvasRef.current;
+
+            if (canvas) {
+                const offsetX = e.clientX - canvas.offsetLeft;
+                const offsetY = e.clientY - canvas.offsetTop;
+
+                createNewElement(img, name, offsetX, offsetY);
+            }
         }
     };
 
@@ -90,27 +109,35 @@ const Canvas: React.FC = () => {
                 </div>
             </div>
 
-            <div className="h-screen w-screen relative">
+            <div className="h-screen w-screen relative overflow-scroll">
                 <div
+                    ref={canvasRef}
                     onDrop={handleCanvasDrop}
                     onDragOver={(e) => e.preventDefault()}
                     className="bg-white min-w-full min-h-full"
                     style={{
                         transform: `scale(${scale})`,
                         position: "relative",
+                        width: "5000px", // Adjust the width as needed
+                        height: "5000px", // Adjust the height as needed
                     }}
                 >
                     {elements.map((element, index) => (
-                        <div
+                        <Draggable
                             key={index}
-                            style={{
-                                position: "absolute",
-                                left: element.x,
-                                top: element.y,
+                            position={{ x: element.x, y: element.y }}
+                            onDrag={(e, data) => {
+                                updateElementPosition(index, data.x, data.y);
                             }}
                         >
-                            <img src={element.img} alt={element.name} />
-                        </div>
+                            <div
+                                style={{
+                                    position: "absolute",
+                                }}
+                            >
+                                <img src={element.img} alt={element.name} />
+                            </div>
+                        </Draggable>
                     ))}
                 </div>
             </div>
